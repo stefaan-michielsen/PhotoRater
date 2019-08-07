@@ -9,7 +9,7 @@ import os         # System function
 import math       # Size calculations
 import random     # Random number generation
 
-from PyQt5 import QtGui, QtCore # GUI
+from PyQt4 import QtGui, QtCore # GUI
 
 from PhotoWidget import PhotoWidget
 import Glicko

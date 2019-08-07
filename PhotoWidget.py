@@ -4,7 +4,7 @@
 
 import os         # System function
 
-from PyQt5 import QtGui, QtCore # GUI
+from PyQt4 import QtGui, QtCore # GUI
 import pyexiv2
 
 import Glicko
