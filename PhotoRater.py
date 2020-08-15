@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 # Photo grouper program using Glicko rating system
 # Author: Anthony VH, Stefaan
@@ -67,6 +67,10 @@ class MainWindow (QtGui.QMainWindow):
     for i in range(2):
       self.groupingWidgets.append(PhotoWidgetGroup(self, i))
       self.hboxGrouping.addWidget(self.groupingWidgets[i])
+
+      self.groupingProgress = QtGui.QProgressBar(self)
+      self.groupingProgress.setGeometry(200, 80, 250, 20)
+      self.hboxGrouping.addWidget(self.groupingProgress)
 
   def createGroupSorting(self):
     for i in range(2):
@@ -216,7 +220,7 @@ class MainWindow (QtGui.QMainWindow):
     # show best 40 or best 1/4 of photos, whichever is smaller
     #if self.showid > 40:
     #    self.showid  = 40
-    self.showid = 100    
+    self.showid = 100
     self.ratings.moveAfterSorting(self.showid)
 
   def showBest (self):
@@ -273,6 +277,9 @@ class MainWindow (QtGui.QMainWindow):
         else:
            self.curPhoto = self.photoorder[self.curPhotoIndex]
            curStatus = self.ratings.photos[self.curPhoto].Status
+           if (curStatus == StatusEnum.UNCHECKED and self.markallgood):
+               curStatus = StatusEnum.GOOD
+               self.ratings.photos[self.curPhoto].Status = curStatus
 
     if (busy):
         self.photoWidgets[0].setAll(self.curDir / self.curPhoto)
@@ -295,6 +302,7 @@ class MainWindow (QtGui.QMainWindow):
 
 
   def startTriage(self):
+    self.markallgood = False
     if not self.hasDirectory:
         self.setDirectory()
     self.isRating = ClassifyingStateEnum.GOODBAD
@@ -309,6 +317,9 @@ class MainWindow (QtGui.QMainWindow):
         self.endTriage()
 
   def updatePassFailRankings(self, keynr):
+      if keynr == 3:
+          print("Marked all good")
+          self.markallgood = True
       if keynr == 1: # Good
           self.ratings.photos[self.curPhoto].Status = StatusEnum.GOOD
       else:
@@ -332,12 +343,63 @@ class MainWindow (QtGui.QMainWindow):
     self.tabs.setTabEnabled(1, True)
     self.tabs.setCurrentIndex(1)
     self.photoorder = sorted(self.ratings.GoodPhotosForGrouping())
-    if len(self.photoorder) > 1:
-        self.curPhoto = self.photoorder[self.curPhotoIndex + 1]
-        self.curBasePhoto = self.photoorder[self.curPhotoIndex]
-        self.updateDisplayedPhotosGrouping()
+    #if len(self.photoorder) > 1:
+    #    self.curPhoto = self.photoorder[self.curPhotoIndex + 1]
+    #    self.curBasePhoto = self.photoorder[self.curPhotoIndex]
+    #    self.updateDisplayedPhotosGrouping()
+    #else:
+    fingerprints = {}
+    import pickle
+    if os.path.exists(self.curDir / "fingerprints.my"):
+        with open(self.curDir / "fingerprints.my", 'rb') as fh:
+            fingerprints = pickle.load(fh)
+            print("Loaded fingerprints successfully")
     else:
-        self.endGrouping()
+        print("Didn't find fingerprint file")
+
+    from ImageFingerprint import ImageFingerprint
+    current = 0
+    self.groupingProgress.setValue(current/len(self.photoorder))
+    for photo in self.photoorder:
+        current += 1
+        if not photo in fingerprints.keys():
+            fingerprints[photo]  = ImageFingerprint(self.curDir / photo)
+            print("Created")
+        self.groupingProgress.setValue(current/len(self.photoorder))
+
+    with open(self.curDir / "fingerprints.my", 'wb') as fh:
+        pickle.dump(fingerprints, fh)
+        print("Saved fingerprints successfully")
+
+    matchtable = {}
+
+    matchreq = 0.60
+    sorted_images = sorted(fingerprints.keys())
+
+    groups = []
+    currentgroup = [sorted_images[0]]
+    for previous, current in zip(sorted_images, sorted_images[1:]):
+        if fingerprints[previous].match(fingerprints[current]) > matchreq:
+            currentgroup.append(current)
+        else:
+            groups.append(currentgroup)
+            currentgroup = [current]
+    keepratio = len(sorted_images)/len(groups)
+    print("%g : Divided %i images over %i groups" %( matchreq, len(sorted_images), len(groups)))
+    photoorder_reverselut = {}
+    for i in range(len(self.photoorder)):
+        photoorder_reverselut[self.photoorder[i]] = i
+    for group in groups:
+        if len(group) == 1:
+            self.ratings.photos[group[0]].Grouped = GroupedEnum.SINGLE
+        else:
+            for photo in group:
+                self.ratings.photos[photo].Grouped = GroupedEnum.GROUPED
+                self.ratings.photos[photo].GroupId = group[0]
+
+
+
+    self.endGrouping()
 
   def updateGroupRankings(self, keynr):
       if keynr == 1: # New group
@@ -565,7 +627,7 @@ class MainWindow (QtGui.QMainWindow):
   def keyPressPassFail(self, key):
     # If key 1 to 3 is pressed, click button
     keyNr = key - QtCore.Qt.Key_0
-    if (keyNr >= 1) and (keyNr <= 2):
+    if (keyNr >= 1) and (keyNr <= 3):
         self.updatePassFailRankings(keyNr)
 
   def keyPressGrouping(self, key):

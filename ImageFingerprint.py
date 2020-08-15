@@ -8,6 +8,7 @@ class ImageFingerprint:
         self.filename = filename
         if (img == None):
             with Image(filename=filename) as img:
+                print("Attempt to make %s an image" %filename)
                 img.sample(160,160)
                 img.modulate(saturation=100)
                 img.blur(radius=3, sigma=99);

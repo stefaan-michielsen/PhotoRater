@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 # Viewer for best rated photos
 # Author: Anthony VH
