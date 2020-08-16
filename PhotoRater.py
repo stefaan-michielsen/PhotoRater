@@ -376,26 +376,31 @@ class MainWindow (QtGui.QMainWindow):
 
         matchreq = 0.60
         sorted_images = sorted(fingerprints.keys())
+        print(sorted_images)
 
         groups = []
         currentgroup = [sorted_images[0]]
         for previous, current in zip(sorted_images, sorted_images[1:]):
+            print(current)
             if fingerprints[previous].match(fingerprints[current]) > matchreq:
                 currentgroup.append(current)
             else:
                 groups.append(currentgroup)
                 currentgroup = [current]
+        groups.append(currentgroup)
         keepratio = len(sorted_images)/len(groups)
         print("%g : Divided %i images over %i groups" %( matchreq, len(sorted_images), len(groups)))
         photoorder_reverselut = {}
         for i in range(len(self.photoorder)):
             photoorder_reverselut[self.photoorder[i]] = i
+        print(groups)
         for group in groups:
             if len(group) == 1:
                 self.ratings.photos[group[0]].Grouped = GroupedEnum.SINGLE
             else:
                 for photo in group:
                     self.ratings.photos[photo].Grouped = GroupedEnum.GROUPED
+                    print("setting to groupid %s"%(group[0]))
                     self.ratings.photos[photo].GroupId = group[0]
 
 
