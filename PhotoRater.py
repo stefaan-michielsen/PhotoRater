@@ -348,54 +348,55 @@ class MainWindow (QtGui.QMainWindow):
     #    self.curBasePhoto = self.photoorder[self.curPhotoIndex]
     #    self.updateDisplayedPhotosGrouping()
     #else:
-    fingerprints = {}
-    import pickle
-    if os.path.exists(self.curDir / "fingerprints.my"):
-        with open(self.curDir / "fingerprints.my", 'rb') as fh:
-            fingerprints = pickle.load(fh)
-            print("Loaded fingerprints successfully")
-    else:
-        print("Didn't find fingerprint file")
+    if len(self.photoorder) > 0:
+        fingerprints = {}
+        import pickle
+        if os.path.exists(self.curDir / "fingerprints.my"):
+            with open(self.curDir / "fingerprints.my", 'rb') as fh:
+                fingerprints = pickle.load(fh)
+                print("Loaded fingerprints successfully")
+        else:
+            print("Didn't find fingerprint file")
 
-    from ImageFingerprint import ImageFingerprint
-    current = 0
-    self.groupingProgress.setValue(current/len(self.photoorder))
-    for photo in self.photoorder:
-        current += 1
-        if not photo in fingerprints.keys():
-            fingerprints[photo]  = ImageFingerprint(self.curDir / photo)
-            print("Created")
+        from ImageFingerprint import ImageFingerprint
+        current = 0
         self.groupingProgress.setValue(current/len(self.photoorder))
+        for photo in self.photoorder:
+            current += 1
+            if not photo in fingerprints.keys():
+                fingerprints[photo]  = ImageFingerprint(self.curDir / photo)
+                print("Created")
+            self.groupingProgress.setValue(current/len(self.photoorder))
 
-    with open(self.curDir / "fingerprints.my", 'wb') as fh:
-        pickle.dump(fingerprints, fh)
-        print("Saved fingerprints successfully")
+        with open(self.curDir / "fingerprints.my", 'wb') as fh:
+            pickle.dump(fingerprints, fh)
+            print("Saved fingerprints successfully")
 
-    matchtable = {}
+        matchtable = {}
 
-    matchreq = 0.60
-    sorted_images = sorted(fingerprints.keys())
+        matchreq = 0.60
+        sorted_images = sorted(fingerprints.keys())
 
-    groups = []
-    currentgroup = [sorted_images[0]]
-    for previous, current in zip(sorted_images, sorted_images[1:]):
-        if fingerprints[previous].match(fingerprints[current]) > matchreq:
-            currentgroup.append(current)
-        else:
-            groups.append(currentgroup)
-            currentgroup = [current]
-    keepratio = len(sorted_images)/len(groups)
-    print("%g : Divided %i images over %i groups" %( matchreq, len(sorted_images), len(groups)))
-    photoorder_reverselut = {}
-    for i in range(len(self.photoorder)):
-        photoorder_reverselut[self.photoorder[i]] = i
-    for group in groups:
-        if len(group) == 1:
-            self.ratings.photos[group[0]].Grouped = GroupedEnum.SINGLE
-        else:
-            for photo in group:
-                self.ratings.photos[photo].Grouped = GroupedEnum.GROUPED
-                self.ratings.photos[photo].GroupId = group[0]
+        groups = []
+        currentgroup = [sorted_images[0]]
+        for previous, current in zip(sorted_images, sorted_images[1:]):
+            if fingerprints[previous].match(fingerprints[current]) > matchreq:
+                currentgroup.append(current)
+            else:
+                groups.append(currentgroup)
+                currentgroup = [current]
+        keepratio = len(sorted_images)/len(groups)
+        print("%g : Divided %i images over %i groups" %( matchreq, len(sorted_images), len(groups)))
+        photoorder_reverselut = {}
+        for i in range(len(self.photoorder)):
+            photoorder_reverselut[self.photoorder[i]] = i
+        for group in groups:
+            if len(group) == 1:
+                self.ratings.photos[group[0]].Grouped = GroupedEnum.SINGLE
+            else:
+                for photo in group:
+                    self.ratings.photos[photo].Grouped = GroupedEnum.GROUPED
+                    self.ratings.photos[photo].GroupId = group[0]
 
 
 
